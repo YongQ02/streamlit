@@ -62,6 +62,10 @@ def initialize_session_state():
         st.session_state.read = False
     if "gemini_model" not in st.session_state:
         setup_gemini_model()
+
+    # Initialize audio map if not already present
+    if "audio_map" not in st.session_state:
+        st.session_state.audio_map = {}
     
 
 def setup_gemini_model() -> None:
@@ -219,9 +223,6 @@ def create_therapeutic_response(prompt: str) -> str:
 
 def display_message_with_audio(message_content: str, role: str, message_id: str):
     """Display message and generate audio response"""
-    # Initialize audio map if not already present
-    if "audio_map" not in st.session_state:
-        st.session_state.audio_map = {}
         
     with st.chat_message(role):
         st.write(message_content)
