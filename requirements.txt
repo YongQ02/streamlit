@@ -4,6 +4,5 @@ SpeechRecognition
 audio-recorder-streamlit
 google-cloud-texttospeech
 gTTS
-reqssy
 requests
 openai
