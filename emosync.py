@@ -21,22 +21,16 @@ st.set_page_config(
     layout="wide"
 )
 
-Official_Hotlines="""
-
-#Befrienders KL
-Phone: 03-7627 2929
-
-#Talian Kasih
-Phone: 15999 \n
-WhatsApp: 019-2615999"""
-
 # Crisis resources text
 CRISIS_RESOURCES = """
 🆘 24/7 Mental Health Crisis Hotlines in Malaysia:
-- Malaysian Mental Health Association: 
-# 03-2780 6803
-# 03-7772 2899 
-# 011-3338 8567
+- Befrienders KL: 03-7627 2929
+- Malaysian Mental Health Association: 03-2780 6803
+- Ministry of Health Crisis Hotline: 15999
+- Talian Kasih: 15999
+- Befrienders Penang: 04-281 5161
+- Befrienders Ipoh: 05-547 7933
+- Befrienders JB: 07-331 2300
 
 Remember: You are not alone. Help is always available. 
 Your life matters and there are people who care about you. ❤️
@@ -62,11 +56,10 @@ def initialize_session_state():
         st.session_state.read = False
     if "gemini_model" not in st.session_state:
         setup_gemini_model()
-
-    # Initialize audio map if not already present
     if "audio_map" not in st.session_state:
         st.session_state.audio_map = {}
-    
+    if "audio_enabled" not in st.session_state:
+        st.session_state["audio_enabled"] = True
 
 def setup_gemini_model() -> None:
     """Setup Gemini model with API key and custom prompt configuration"""
@@ -104,18 +97,6 @@ def setup_gemini_model() -> None:
         - Encourage reaching out to professional help and support systems
         - Share crisis hotline information
         - Use de-escalation techniques
-
-        OFFICIAL_HOTLINES = [
-    {
-        "name": "Befrienders KL",
-        "phone": "03-7627 2929",
-    },
-    {
-        "name": "Talian Kasih",
-        "phone": "15999",
-        "whatsapp":"019-2615999",
-    }
-]
         """
         
         chat = model.start_chat(history=[])
@@ -206,7 +187,7 @@ def get_crisis_response(prompt: str) -> str:
 
     I care about your safety and well-being. Would you be willing to speak with a professional who is specially trained to help people through difficult times like these?
 
-     {Official_Hotlines}
+    {CRISIS_RESOURCES}
 
     I'm here to listen and support you. Would you like to tell me more about what's bringing you to this point?"""
 
@@ -223,10 +204,9 @@ def create_therapeutic_response(prompt: str) -> str:
 
 def display_message_with_audio(message_content: str, role: str, message_id: str):
     """Display message and generate audio response"""
-        
     with st.chat_message(role):
         st.write(message_content)
-        if role == "assistant":
+        if role == "assistant" and st.session_state.audio_enabled:
             with st.spinner("Generating voice response..."):
                 # Check if audio has already been generated and played for this message
                 if message_id not in st.session_state.audio_map or not st.session_state.audio_map[message_id]["played"]:
@@ -265,27 +245,15 @@ def main():
                 background-color: #f0f2f6;
                 margin-top: 10px;
             }
-            div[data-testid="stChatInput"] {
-                position: relative;
-                bottom: 0;
-                background-color: white;
-            }
-            div[data-testid="stChatInput"] input {
-                color: #31333F !important;
-                background-color: white !important;
-            }
-            section[data-testid="stChatFlow"] > div {
-                min-height: auto !important;
-            }
-            div[data-testid="stChatInput"] textarea {
-                color: #31333F !important;
-                background-color: white !important;
-            }
         </style>
     """, unsafe_allow_html=True)
     
     with st.sidebar:
-        st.markdown("### Mental Health Resources")
+        st.markdown("### Settings")
+        #st.session_state["audio_enabled"] = st.checkbox("Enable Audio Responses", value=st.session_state.get("audio_enabled", True))
+        
+        st.markdown("---")
+        st.markdown("Mental Health Resources")
         st.markdown(CRISIS_RESOURCES)
         st.markdown("---")
         st.markdown("Made with 💖 to support mental well-being")
@@ -299,17 +267,20 @@ def main():
             st.rerun()
         return
 
-    # Create a container for all content
-    content_container = st.container()
-    
-    # Display existing messages with audio
-    with content_container:
+    # Create a new container for the message history and assistant responses
+    response_container = st.container()
+
+    with response_container:
+        # Display existing messages with audio
         for idx, message in enumerate(st.session_state.messages):
             message_id = f"msg_{idx}"
             display_message_with_audio(message["content"], message["role"], message_id)
-    
-        # Input section goes after all messages within the content container
-        col1, col2 = st.columns([4, 1])
+
+    # Create a new container for the user input
+    input_container = st.container()
+
+    with input_container:
+        col1, col2, col3 = st.columns([4, 1, 1])
         
         with col1:
             text_input = st.chat_input("Share your feelings here...")
@@ -320,24 +291,26 @@ def main():
                 pause_threshold=2.0,
                 sample_rate=44100
             )
+
+        transcribed_text = None
+        if audio_bytes:
+            with st.spinner("Listening and processing your voice..."):
+                transcribed_text = speech_to_text(audio_bytes)
+                if transcribed_text:
+                    st.info(f"You said: {transcribed_text}")
     
-    # Process input and generate responses
-    prompt = None
-    
-    if audio_bytes:
-        with st.spinner("Listening and processing your voice..."):
-            transcribed_text = speech_to_text(audio_bytes)
-            if transcribed_text:
-                prompt = transcribed_text
-                st.info(f"You said: {transcribed_text}")
-    
-    elif text_input:
+    if text_input:
         prompt = text_input
+    elif transcribed_text:
+        prompt = transcribed_text
+    else:
+        prompt = None
     
     if prompt:
         # Add user message to state and display
         st.session_state.messages.append({"role": "user", "content": prompt})
-        display_message_with_audio(prompt, "user", f"msg_{len(st.session_state.messages)-1}")
+        with response_container:
+            display_message_with_audio(prompt, "user", f"msg_{len(st.session_state.messages)-1}")
         
         # Generate and display assistant response
         with st.spinner("Composing a response..."):
@@ -351,10 +324,8 @@ def main():
                 "role": "assistant",
                 "content": response_text
             })
-            display_message_with_audio(response_text, "assistant", f"msg_{len(st.session_state.messages)-1}")
-            
-        # Force a rerun to update the display
-        st.rerun()
+            with response_container:
+                display_message_with_audio(response_text, "assistant", f"msg_{len(st.session_state.messages)-1}")
 
 if __name__ == "__main__":
     main()
