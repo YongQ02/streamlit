@@ -11,7 +11,7 @@ IDE: Visual Studio Code & Google Colaboratory
 Deploy Platform: Streamlit
 
 ### Scan Me For Demo
-![image alt](https://github.com/YongQ02/streamlit/blob/38141f259788471ab091f6e52f772e5af0b6477a/pages/ChatEnvironment.jpeg)
+![image alt](https://github.com/YongQ02/streamlit/blob/ac7c876e3f9b0188ee9990c93ae73866dec59793/pages/Demo%20QRCode.jpeg)
 
 ## Design Interface
 
